@@ -6,8 +6,9 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
 
 /**
  * @author young
@@ -15,16 +16,14 @@ import java.util.List;
  * @version 1.0
  */
 public class Server {
-    private static List<User> userList = new ArrayList<User>(4);
+    private List<User> userList = new CopyOnWriteArrayList<>();
 
-    static {
-        userList.add(new User("localhost", 8888));
-        userList.add(new User("localhost", 8887));
-        userList.add(new User("localhost", 8886));
-        userList.add(new User("localhost", 8885));
+    public Server() {
+        receive();
+        init();
     }
 
-    public static void main(String[] args) {
+    private void init() {
         try {
             DatagramSocket socket = new DatagramSocket(7369);
             while (true) {
@@ -38,7 +37,30 @@ public class Server {
         }
     }
 
-    private static void send(DatagramSocket socket, DatagramPacket packet) throws IOException {
+    private void receive() {
+        Executors.newCachedThreadPool().execute(() -> {
+            try {
+                DatagramSocket socket = new DatagramSocket(7368);
+                while (true) {
+                    DatagramPacket packet = new DatagramPacket(new byte[1024], 1024);
+                    socket.receive(packet);
+                    User user = (User) Util.getObject(packet.getData());
+                    if (user.getType() == 1) {
+                        System.out.println(user + "加入");
+                        userList.add(user);
+                    } else {
+                        System.out.println(user + "退出");
+                        userList.remove(user);
+                    }
+                    send(socket, packet);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void send(DatagramSocket socket, DatagramPacket packet) throws IOException {
         for (User user : userList) {
             InetAddress ip = InetAddress.getByName(user.getHost());
             packet = new DatagramPacket(packet.getData(), packet.getLength(), ip, user.getPort());

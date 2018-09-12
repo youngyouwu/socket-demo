@@ -6,10 +6,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.concurrent.Executors;
 
 /**
@@ -25,24 +27,27 @@ public class UserGUI extends JFrame {
 
     private int clientPort;
     private String username;
+    private User user;
 
-    private UserGUI(int clientPort, String username) {
+    public UserGUI(int clientPort, String username) {
         this.clientPort = clientPort;
         this.username = username;
+        user = new User("localhost", clientPort, 1, username);
         createListPanel();
         createInputPanel();
         createBtnPanel();
         even();
         init();
+        send(user);
         receive();
     }
 
     private void init() {
-        this.setTitle("聊天室"); // 设置标题
+        this.setTitle("聊天室" + "-" + username); // 设置标题
         this.setSize(400, 600); // 设置窗体大小
         this.setResizable(false); // 窗体大小不可变
         this.setLocationRelativeTo(null); // 窗体屏幕居中
-        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // 点击关闭按钮结束程序
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // 点击关闭按钮结束程序
         this.setVisible(true); // 显示窗体
     }
 
@@ -53,7 +58,7 @@ public class UserGUI extends JFrame {
         listText = new JTextArea();
         listText.setLineWrap(true);
         listText.setEditable(false);
-        listText.setFont(new Font("行楷", Font.PLAIN, 18));
+        listText.setFont(new Font("行楷", Font.PLAIN, 16));
         listText.setBackground(Color.CYAN);
         listPanel.setViewportView(listText);
         this.add(listPanel, BorderLayout.NORTH);
@@ -65,7 +70,7 @@ public class UserGUI extends JFrame {
         inputPanel.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         sendText = new JTextArea();
         sendText.setLineWrap(true);
-        sendText.setFont(new Font("行楷", Font.PLAIN, 18));
+        sendText.setFont(new Font("行楷", Font.PLAIN, 16));
         inputPanel.setViewportView(sendText);
         this.add(inputPanel, BorderLayout.CENTER);
     }
@@ -79,19 +84,6 @@ public class UserGUI extends JFrame {
         btnPanel.add(sendBtn);
         btnPanel.add(resetBtn);
         this.add(btnPanel, BorderLayout.SOUTH);
-    }
-
-    private void send(Message msg) {
-        try {
-            InetAddress serveIp = InetAddress.getByName("localhost"); // 服务器IP
-            int serverPort = 7369; // 服务器端口
-            DatagramSocket socket = new DatagramSocket();
-            byte[] message = Util.getByteArray(msg);
-            DatagramPacket packet = new DatagramPacket(message, message.length, serveIp, serverPort);
-            socket.send(packet);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
     }
 
     private void even() {
@@ -115,22 +107,41 @@ public class UserGUI extends JFrame {
         });
         // 清空发送框
         resetBtn.addActionListener(e -> sendText.setText(""));
+        // 关闭窗口事件
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                user.setType(2);
+                send(user);
+                super.windowClosed(e);
+            }
+        });
+    }
+
+    private void send(Object object) {
+        int serverPort = 7369; // 服务器端口
+        if (object instanceof User) {
+            serverPort = 7368;
+        }
+        try {
+            InetAddress serveIp = InetAddress.getByName("localhost"); // 服务器IP
+            DatagramSocket socket = new DatagramSocket();
+            byte[] message = Util.getByteArray(object);
+            DatagramPacket packet = new DatagramPacket(message, message.length, serveIp, serverPort);
+            socket.send(packet);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void receive() {
         Executors.newCachedThreadPool().execute(() -> {
             try {
-                DatagramSocket socket = new DatagramSocket(clientPort);
+                DatagramSocket socket = new DatagramSocket(UserGUI.this.clientPort);
                 while (true) {
                     DatagramPacket packet = new DatagramPacket(new byte[1024], 1024);
                     socket.receive(packet);
-                    Message message = (Message) Util.getObject(packet.getData());
-                    listText.append(message.getFrom());
-                    listText.append(" : ");
-                    listText.append(LocalDateTime.now().toString());
-                    listText.append("\n");
-                    listText.append(message.getContent());
-                    listText.append("\n");
+                    UserGUI.this.print(Util.getObject(packet.getData()));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -138,10 +149,26 @@ public class UserGUI extends JFrame {
         });
     }
 
-    public static void main(String[] args) {
-        new UserGUI(8888, "jerry");
-        new UserGUI(8887, "tom");
-        new UserGUI(8886, "ada");
-        new UserGUI(8885, "addy");
+    private void print(Object object) {
+        if (object instanceof Message) {
+            Message message = (Message) object;
+            listText.append(message.getFrom());
+            listText.append(" : ");
+            listText.append(LocalDate.now().toString());
+            listText.append("\n");
+            listText.append(message.getContent());
+            listText.append("\n");
+        } else {
+            User user = (User) object;
+            listText.append(user.getName());
+            listText.append(" : ");
+            listText.append(LocalDate.now().toString());
+            if (user.getType() == 1) {
+                listText.append("加入");
+            } else {
+                listText.append("退出");
+            }
+            listText.append("\n");
+        }
     }
 }
