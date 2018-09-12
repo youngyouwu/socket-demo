@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.concurrent.Executors;
 
 /**
+ * 聊天窗口
  * @author young
  * create_date 2018/9/11 16:07
  * @version 1.0
@@ -88,7 +89,10 @@ public class UserGUI extends JFrame {
     private void even() {
         // 点击按钮发送数据
         sendBtn.addActionListener(e -> {
-            String text = sendText.getText();
+            String text = sendText.getText().trim();
+            if ("".equals(text)) {
+                return;
+            }
             sendText.setText("");
             sendPlus(SocketDto.message(this.name, text));
         });
@@ -98,9 +102,12 @@ public class UserGUI extends JFrame {
             public void keyTyped(KeyEvent e) {
                 char keyChar = e.getKeyChar();
                 if (KeyEvent.VK_ENTER == keyChar) {
-                    String text = sendText.getText();
+                    String text = sendText.getText().trim();
+                    if ("".equals(text)) {
+                        return;
+                    }
                     sendText.setText("");
-                    sendPlus(SocketDto.message(UserGUI.this.name, text.substring(0, text.length() - 1)));
+                    sendPlus(SocketDto.message(UserGUI.this.name, text));
                 }
             }
         });

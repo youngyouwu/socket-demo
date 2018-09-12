@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * 服务器，消息中转站
  * @author young
  * create_date 2018/9/11 10:42
  * @version 1.0
@@ -38,11 +39,9 @@ public class Server implements Runnable {
                 User user = new User(socketDto.getName(), socketDto.getHost(), socketDto.getPort());
                 if (socketDto.getType().equals(SocketDto.REGISTER)) {
                     userStringMap.put(user, user.getName());
-                    System.out.println(socketDto.getName() + "加入");
                 }
                 if (socketDto.getType().equals(SocketDto.LOGOUT)) {
                     userStringMap.remove(user);
-                    System.out.println(socketDto.getName() + "退出");
                 }
             }
         } catch (Exception e) {
