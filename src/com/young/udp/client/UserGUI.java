@@ -1,6 +1,6 @@
-package com.young.udp;
+package com.young.udp.client;
 
-import com.young.util.Util;
+import com.young.udp.SocketDto;
 
 import javax.swing.*;
 import java.awt.*;
@@ -26,24 +26,23 @@ public class UserGUI extends JFrame {
     private JTextArea sendText; // 消息输入框
 
     private int clientPort;
-    private String username;
-    private User user;
+    private String name;
+    private final String host = "localhost";
 
-    public UserGUI(int clientPort, String username) {
+    public UserGUI(int clientPort, String name) {
         this.clientPort = clientPort;
-        this.username = username;
-        user = new User("localhost", clientPort, 1, username);
+        this.name = name;
         createListPanel();
         createInputPanel();
         createBtnPanel();
         even();
         init();
-        send(user);
+        sendPlus(SocketDto.register(this.name, this.host, clientPort));
         receive();
     }
 
     private void init() {
-        this.setTitle("聊天室" + "-" + username); // 设置标题
+        this.setTitle("聊天室" + "-" + this.name); // 设置标题
         this.setSize(400, 600); // 设置窗体大小
         this.setResizable(false); // 窗体大小不可变
         this.setLocationRelativeTo(null); // 窗体屏幕居中
@@ -91,7 +90,7 @@ public class UserGUI extends JFrame {
         sendBtn.addActionListener(e -> {
             String text = sendText.getText();
             sendText.setText("");
-            send(new Message(this.username, text));
+            sendPlus(SocketDto.message(this.name, text));
         });
         // 绑定事件，按回车键发送数据
         sendText.addKeyListener(new KeyAdapter() {
@@ -101,7 +100,7 @@ public class UserGUI extends JFrame {
                 if (KeyEvent.VK_ENTER == keyChar) {
                     String text = sendText.getText();
                     sendText.setText("");
-                    send(new Message(username, text.substring(0, text.length() - 1)));
+                    sendPlus(SocketDto.message(UserGUI.this.name, text.substring(0, text.length() - 1)));
                 }
             }
         });
@@ -111,22 +110,18 @@ public class UserGUI extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                user.setType(2);
-                send(user);
+                sendPlus(SocketDto.logout(UserGUI.this.name, UserGUI.this.host, UserGUI.this.clientPort));
                 super.windowClosed(e);
             }
         });
     }
 
-    private void send(Object object) {
-        int serverPort = 7369; // 服务器端口
-        if (object instanceof User) {
-            serverPort = 7368;
-        }
+    private void sendPlus(SocketDto socketDto) {
         try {
+            int serverPort = 7369; // 服务器端口
             InetAddress serveIp = InetAddress.getByName("localhost"); // 服务器IP
             DatagramSocket socket = new DatagramSocket();
-            byte[] message = Util.getByteArray(object);
+            byte[] message = SocketDto.getByteArray(socketDto);
             DatagramPacket packet = new DatagramPacket(message, message.length, serveIp, serverPort);
             socket.send(packet);
         } catch (Exception e) {
@@ -141,7 +136,7 @@ public class UserGUI extends JFrame {
                 while (true) {
                     DatagramPacket packet = new DatagramPacket(new byte[1024], 1024);
                     socket.receive(packet);
-                    UserGUI.this.print(Util.getObject(packet.getData()));
+                    UserGUI.this.print(SocketDto.getObject(packet.getData()));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -149,24 +144,21 @@ public class UserGUI extends JFrame {
         });
     }
 
-    private void print(Object object) {
-        if (object instanceof Message) {
-            Message message = (Message) object;
-            listText.append(message.getFrom());
+    private void print(SocketDto socketDto) {
+        if (socketDto.getType().equals(SocketDto.MESSAGE)) {
+            listText.append(socketDto.getName());
             listText.append(" : ");
             listText.append(LocalDate.now().toString());
             listText.append("\n");
-            listText.append(message.getContent());
+            listText.append(socketDto.getContent());
             listText.append("\n");
         } else {
-            User user = (User) object;
-            listText.append(user.getName());
-            listText.append(" : ");
-            listText.append(LocalDate.now().toString());
-            if (user.getType() == 1) {
-                listText.append("加入");
-            } else {
-                listText.append("退出");
+            listText.append(socketDto.getName());
+            if (socketDto.getType().equals(SocketDto.REGISTER)) {
+                listText.append(" 加入");
+            }
+            if (socketDto.getType().equals(SocketDto.LOGOUT)) {
+                listText.append(" 退出");
             }
             listText.append("\n");
         }

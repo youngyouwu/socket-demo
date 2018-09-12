@@ -1,4 +1,4 @@
-package com.young.udp;
+package com.young.udp.server;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -12,13 +12,11 @@ public class User implements Serializable {
     private String name;
     private String host;
     private Integer port;
-    private Integer type;
 
-    public User(String host, Integer port, Integer type, String name) {
+    public User(String name, String host, Integer port) {
         this.name = name;
         this.host = host;
         this.port = port;
-        this.type = type; // 1: 加入， 2: 退出
     }
 
     public String getName() {
@@ -45,14 +43,6 @@ public class User implements Serializable {
         this.port = port;
     }
 
-    public Integer getType() {
-        return type;
-    }
-
-    public void setType(Integer type) {
-        this.type = type;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -73,7 +63,6 @@ public class User implements Serializable {
                 "name='" + name + '\'' +
                 ", host='" + host + '\'' +
                 ", port=" + port +
-                ", type=" + type +
                 '}';
     }
 }
